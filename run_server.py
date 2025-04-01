@@ -1,10 +1,13 @@
 import asyncio
+import os
+
 from src.server.HTTPServer import HTTPServer
 from src.server.ServerConfig import ServerConfig
 
 
 async def main():
-    config = ServerConfig("server.conf")
+    config_path = os.path.join(os.path.dirname(__file__), "server.conf")
+    config = ServerConfig(config_path)
     server = HTTPServer(config)
     try:
         await server.start()
