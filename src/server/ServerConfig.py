@@ -4,7 +4,7 @@ import os
 
 class ServerConfig:
     """Класс для загрузки и хранения конфигурации сервера."""
-    def __init__(self, config_path: str = "server.conf"):
+    def __init__(self, config_path: str = "server.json"):
         self.config_path = config_path
         self.host = "127.0.0.1"
         self.port = 8080

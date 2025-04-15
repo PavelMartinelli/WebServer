@@ -6,7 +6,7 @@ from src.server.ServerConfig import ServerConfig
 
 
 async def main():
-    config_path = os.path.join(os.path.dirname(__file__), "server.conf")
+    config_path = os.path.join(os.path.dirname(__file__), "server.json")
     config = ServerConfig(config_path)
     server = HTTPServer(config)
     try:
