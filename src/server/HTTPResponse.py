@@ -9,7 +9,7 @@ class HTTPResponse:
     def build_response(self) -> bytes:
         """Сформировать HTTP-ответ."""
         response_headers = [
-            f"HTTP/1.1 {self.status_code} {self.get_status_message()}",
+            f"HTTP/1.1 {self.status_code} {self.get_status_message(self.status_code)}",
             f"Content-Type: {self.content_type}",
             f"Content-Length: {self.content_length}",
             "Connection: keep-alive",
@@ -20,11 +20,15 @@ class HTTPResponse:
             response += self.body
         return response
 
-    def get_status_message(self) -> str:
+    @staticmethod
+    def get_status_message(status_code: int) -> str:
         """Получить текстовое описание статуса."""
         status_messages = {
             200: "OK",
+            403: "Forbidden",
             404: "Not Found",
-            405: "Method Not Allowed"
+            405: "Method Not Allowed",
+            500: "Internal Server Error",
+            503: "Service Unavailable"
         }
-        return status_messages.get(self.status_code, "Unknown Status")
+        return status_messages.get(status_code, "Unknown Status")

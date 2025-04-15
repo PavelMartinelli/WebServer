@@ -28,27 +28,17 @@ class HTTPServer:
         writer.close()
         await writer.wait_closed()
 
-    async def handle_get_request(self, request: HTTPRequest,
-                                 writer: asyncio.StreamWriter):
+    async def handle_get_request(self, request: HTTPRequest, writer: asyncio.StreamWriter):
         """Обработка GET-запроса."""
         path = request.path
         if path == '/':
             path = '/index.html'
 
-        # Удаляем начальный слэш и проверяем переходы наверх
         safe_path = path.lstrip('/')
         if '..' in safe_path:
-            response = HTTPResponse(
-                status_code=403,
-                content_type='text/plain',
-                content_length=23,
-                body=b"403 Forbidden (Path Traversal)"
-            )
-            writer.write(response.build_response())
-            await writer.drain()
+            await self.handle_error(403, writer)
             return
 
-        # Полный путь к файлу
         file_path = Path(self.config.static_dir) / safe_path
 
         if file_path.is_file():
@@ -58,14 +48,7 @@ class HTTPServer:
                     if cached_file:
                         file_descriptor, file_size, last_modified = cached_file
                     else:
-                        response = HTTPResponse(
-                            status_code=503,
-                            content_type='text/plain',
-                            content_length=19,
-                            body=b"503 Cache Overflow"
-                        )
-                        writer.write(response.build_response())
-                        await writer.drain()
+                        await self.handle_error(503, writer)
                         return
                 else:
                     file_descriptor = open(file_path, 'rb')
@@ -76,11 +59,9 @@ class HTTPServer:
                 if not mime_type:
                     mime_type = 'application/octet-stream'
 
-                # Читаем файл
                 file_descriptor.seek(0)
                 file_content = file_descriptor.read()
 
-                # Если не из кэша - закрываем файл
                 if not self.config.open_file_cache_enabled:
                     file_descriptor.close()
 
@@ -93,31 +74,44 @@ class HTTPServer:
                 writer.write(response.build_response())
             except Exception as e:
                 print(f"Error serving file: {e}")
-                response = HTTPResponse(
-                    status_code=500,
-                    content_type='text/plain',
-                    content_length=25,
-                    body=b"500 Internal Server Error"
-                )
-                writer.write(response.build_response())
+                await self.handle_error(500, writer)
         else:
-            response = HTTPResponse(
-                status_code=404,
-                content_type='text/html',
-                content_length=13,
-                body=b"404 Not Found"
-            )
-            writer.write(response.build_response())
+            await self.handle_error(404, writer)
 
         await writer.drain()
 
     async def handle_unsupported_method(self, writer: asyncio.StreamWriter):
         """Обработка неподдерживаемых методов."""
+        await self.handle_error(405, writer)
+
+    async def handle_error(self, status_code: int, writer: asyncio.StreamWriter):
+        """Формирование ответа с ошибкой."""
+        error_page = Path(self.config.static_dir) / f"{status_code}.html"
+        content_type = "text/html"
+        body = None
+
+        try:
+            if error_page.is_file():
+                with open(error_page, "rb") as file:
+                    body = file.read()
+                content_length = len(body)
+            else:
+                default_message = f"{status_code} {HTTPResponse.get_status_message(status_code)}".encode()
+                content_type = "text/plain"
+                body = default_message
+                content_length = len(body)
+        except Exception as e:
+            print(f"Error loading error page: {e}")
+            default_message = f"{status_code} {HTTPResponse.get_status_message(status_code)}".encode()
+            content_type = "text/plain"
+            body = default_message
+            content_length = len(body)
+
         response = HTTPResponse(
-            status_code=405,
-            content_type='text/plain',
-            content_length=18,
-            body=b"405 Method Not Allowed"
+            status_code=status_code,
+            content_type=content_type,
+            content_length=content_length,
+            body=body
         )
         writer.write(response.build_response())
         await writer.drain()
