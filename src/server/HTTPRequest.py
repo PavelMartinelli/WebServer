@@ -1,8 +1,13 @@
+from urllib.parse import unquote, parse_qs
+
+
 class HTTPRequest:
     """Класс для разбора HTTP-запроса."""
+
     def __init__(self, request_data: bytes):
         self.method = None
         self.path = None
+        self.query_params = {}
         self.headers = {}
         self.parse_request(request_data)
 
@@ -12,10 +17,19 @@ class HTTPRequest:
         if not request_lines:
             return
 
-        # Разбор первой строки (метод, путь, версия протокола)
-        self.method, self.path, _ = request_lines[0].split()
+        first_line = request_lines[0].split()
+        if len(first_line) < 3:
+            return
 
-        # Разбор заголовков
+        self.method, full_path, _ = first_line
+
+        path_parts = full_path.split('?', 1)
+        self.path = unquote(path_parts[0])
+
+        if len(path_parts) > 1:
+            query_string = path_parts[1]
+            self.query_params = parse_qs(query_string)
+
         for line in request_lines[1:]:
             if not line.strip():
                 break
