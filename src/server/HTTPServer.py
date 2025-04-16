@@ -151,8 +151,7 @@ class HTTPServer:
         writer.write(response.build_response())
         await writer.drain()
 
-    async def handle_calculator(self, request: HTTPRequest,
-                                writer: asyncio.StreamWriter):
+    async def handle_calculator(self, request: HTTPRequest, writer: asyncio.StreamWriter):
         """Простой калькулятор"""
         try:
             a = request.query_params.get('a', ['0'])[0]
